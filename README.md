@@ -25,13 +25,13 @@ Launched on:1st February 2013.
 
 
 developed by
-Karthick[Perceptual developer]
+Karthick[PercOS developer]
 Abishek
 Bala
  
  
  
-impressport labs. 
+free to use/modify.impressport labs. s
  
  
 
