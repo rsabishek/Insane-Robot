@@ -1,0 +1,540 @@
+// Program to display a single alphabet ‘A’ on LCD 
+/*
+LCD data transfer through 8 bit mode
+Writing a single letter A on LCD
+ 
+LCD DATA port----PORT A
+ctrl port------PORT D
+	rs-------Pd0
+	rw-------Pd1
+	en-------Pd2
+*/
+ 
+#include<avr/io.h>
+#include<util/delay.h>
+#include<stdlib.h>
+#include<math.h>
+ 
+#define LCD_DATA PORTC		// LCD data port
+#define ctrl PORTD
+#define en PD2		// enable signal
+#define rw PD1		// read/write signal
+#define rs PD0		// register select signal
+
+
+
+uint16_t str8,lft,r8;
+uint16_t cone,last_cone=0;
+int up,h;
+ 
+ 
+void LCD_cmd(unsigned char cmd);
+void init_LCD(void);
+void LCD_write(unsigned char data);
+ 
+ 
+void initadc()
+{
+ADMUX=(1<<REFS0);                        
+ADCSRA=(1<<ADEN)|(1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0); 
+}
+
+
+uint16_t readadc(uint8_t ch)
+{
+
+   ch=ch&0b00000111;
+   ADMUX|=ch;
+
+   //Start Single conversion
+   ADCSRA|=(1<<ADSC);
+
+   //Wait for conversion to complete
+   while(!(ADCSRA & (1<<ADIF)));
+
+
+   ADCSRA|=(1<<ADIF);
+
+   return(ADC);
+}
+
+
+void InitPWM()
+{
+    DDRD |= _BV(PD4) | _BV(PD5);
+	TCCR1A = _BV(COM1A1) | _BV(COM1B1) | _BV(WGM11);
+    TCCR1B = _BV(WGM13) | _BV(WGM12);
+	
+	//TCCR1B 
+	TCCR1B |= _BV(CS10) |_BV(CS11);
+	ICR1 = 1000;
+			
+}
+
+void set_motr(uint16_t lduty,uint16_t rduty)
+{
+    OCR1A = lduty;
+    OCR1B = rduty;
+}
+
+
+void Wait()
+{
+   uint8_t i;
+   for(i=0;i<10;i++)
+      _delay_loop_2(0);
+	  
+}
+ 
+ 
+void disp(uint16_t ans,int x,int y)
+{
+int v,t,s,f;
+f=(ans%10);
+s=(ans/10)%10;
+t=(ans/100)%10;
+v=(ans/1000)%10;
+	
+
+lcd_gotoxy(x,y);
+
+if(x==1 && y==1)
+LCD_write('f');//f
+
+if(x==1 && y==2)
+LCD_write('r');//r
+
+
+if(x==10 && y==1)
+LCD_write('l');
+
+if(x==10 && y==2)
+LCD_write('o');
+
+
+LCD_write(v+48);		// call a function to write A on LCD
+LCD_write(t+48);
+LCD_write(s+48);
+LCD_write(f+48);
+	
+_delay_ms(1);
+}
+
+
+void atck()
+{
+int f_sense=0;
+
+while(1) 
+{
+f_sense = (PINB & 0b10000000);
+//initadc();
+//l_sense=readadc(6);
+
+if(f_sense==0b00000000) 
+{
+set_motr(400,400);
+PORTB=0b00001010;
+}
+
+
+if(f_sense==0b10000000) 
+{
+PORTB=0b00001111;
+}
+
+
+}
+
+
+
+//l8 source or obstacle?? chck
+
+//PORTB=0b00000101;//hitng
+//_delay_ms(50);
+
+//hit or still to hit??ldr reading....
+//PORTB=0b00001010;//rev
+//_delay_ms(10);
+
+//readadc....
+}
+
+
+
+void hello_cone()    
+{
+initadc();
+cone=readadc(4);
+
+if(cone > last_cone)
+{last_cone=cone;
+}
+
+}
+
+
+int move_cone()
+{
+initadc();
+cone=readadc(4);
+
+if( (abs(cone-last_cone) < 5) && last_cone!=0 ) //sub. to change...might use abs() or some othr...
+{
+//LCD_cmd(0x01);
+//_delay_ms(1);
+//disp(cone,1,2);
+return 1; 
+}
+
+
+return 0;
+}
+
+
+
+
+void hello()      //left scan on!
+{
+int counter,act=0;//ir not enabled while scan
+//last_cone=0;//each tym set to zero b4 callin...
+
+
+
+for(counter=0;counter<=60;counter++)
+{
+	
+	set_motr(200,200);
+	PORTB=0b00001001;
+
+    
+	hello_cone();
+	
+
+	
+	if(counter==60)
+    PORTB=0b00001111;
+	
+	
+	_delay_ms(25);
+		
+}
+
+
+PORTB=0b00001111;//optnl geth
+
+
+//LCD_cmd(0x01);
+//_delay_ms(1);
+
+//disp(last_cone,1,1);
+//_delay_ms(50);
+
+
+
+
+for(counter=0;counter<=60;counter++)
+{
+  
+    
+      set_motr(200,200);
+      PORTB=0b00000110;
+	  
+     act=move_cone();
+
+     if(act==1) 
+     {
+      PORTB=0b00001111;
+     break;}
+
+
+if(counter==60)
+PORTB=0b00001111;
+
+
+_delay_ms(25);	
+	
+}
+
+
+//if(act==1) //nearest trgt spotted!
+//{
+//atck(); return 1;
+//}
+
+
+//if act=0 means go for another scan for another tym or go bac to main...
+
+
+//PORTB=0b00000000;
+return 0;
+}
+
+
+void hai()//r8 scan on!
+{
+int counter2,act2;//ir not enabled while scan
+//last_cone=0;
+
+for(counter2=0;counter2<=60;counter2++)
+{
+	
+	set_motr(200,200);
+	PORTB=0b00000110;
+
+    hello_cone();
+		
+	if(counter2==60)
+    PORTB=0b00001111;
+	
+	_delay_ms(25);
+		
+}
+
+
+PORTB=0b00001111;
+
+//LCD_cmd(0x01);
+//_delay_ms(1);
+//disp(last_cone,1,1);
+//_delay_ms(5);
+
+
+for(counter2=0;counter2<=60;counter2++)
+{
+set_motr(200,200);
+PORTB=0b000001001;
+
+act2=move_cone();
+
+if(act2==1) 
+{
+PORTB=0b00001111;
+break;}
+
+
+if(counter2==60)
+PORTB=0b00001111;
+
+_delay_ms(25);	
+	
+}
+
+
+PORTB=0b00001111;
+
+
+if(act2==1) //nearest trgt spotted!
+{
+atck(); 
+}
+
+
+//if act2=0 means go for another scan for another tym or go bac to main...
+
+//PORTB=0b00000000;
+
+}
+
+
+int shake()
+{
+//LCD_cmd(0x01);
+//_delay_ms(1);
+while(1)
+{
+initadc();
+lft=readadc(2);
+initadc();
+str8=readadc(1);
+//initadc();
+r8=readadc(3);
+//initadc();
+cone=readadc(4);
+
+disp(lft,10,1);
+disp(r8,1,2);
+disp(str8,1,1);
+disp(cone,10,2);
+
+
+//_delay_ms(5);
+//LCD_cmd(0x01);
+//_delay_ms(1);
+    
+
+/*if( (lft>str8) && (lft>r8) )
+{//return 2;
+//hello();
+}
+
+ if( (r8>lft) && (r8>str8))
+{//return 3;
+ hai();
+}
+
+if((str8>lft) && (str8>r8))
+ {//return 1;
+ }
+*/
+
+
+}
+return 0;
+
+}
+
+
+ 
+int main()
+{
+    
+	DDRC=0xff;		// making LCD_DATA port as output port
+	//DDRD=0x07;		// making signal as out put
+	DDRB=0x0F;     //motor.....0b0000(10_r8 mtr)(10_lft mtr)....[10-frwd]
+	PORTA=0xFF;
+    //_delay_ms(50);
+
+
+
+	//init_LCD();		 // initialization of LCD
+	_delay_ms(5);  // delay of 50 milli seconds
+	
+
+	initadc();
+	InitPWM();
+	
+	
+while(1)
+{
+initadc();
+lft=readadc(2);
+initadc();
+str8=readadc(1);
+initadc();
+r8=readadc(3);
+initadc();
+cone=readadc(4);
+
+//disp(lft,10,1);
+//disp(r8,1,2);
+//disp(str8,1,1);
+//disp(cone,10,2);
+
+
+//_delay_ms(5);
+//LCD_cmd(0x01);
+//_delay_ms(1);
+    
+
+if( (r8>lft) && (r8>str8) )
+{
+last_cone=0;
+hai(); 
+}
+
+
+if( (lft>str8) && (lft>r8) )
+{
+_delay_ms(100);
+PORTB=0b000000101;
+}
+
+
+if((str8>lft) && (str8>r8))
+{
+_delay_ms(100);
+PORTB=0b00000101;
+}
+
+_delay_ms(5);
+
+}
+ 
+
+
+
+
+
+
+	//if((lft>r8)  && (lft>str8))
+	//{
+	//SetPWMOutput(200,200);
+    //PORTD=0b10000000;
+	
+	//comp();
+	
+	//01 frwd...rl motors...
+	
+
+	
+    //PORTB=0b00000000;
+		
+	
+	
+	
+
+	
+	//_delay_ms(80);
+    //LCD_cmd(0x80|0x45); 
+    //_delay_ms(1);
+
+	//LCD_cmd(0x01);		// clear LCD
+	//_delay_ms(1);
+
+
+	//LCD_write(buffer);
+
+	return 0;
+}
+
+
+
+ 
+void init_LCD(void)
+{
+	LCD_cmd(0x38);		// initialization of 16X2 LCD in 8bit mode
+	_delay_ms(1);
+ 
+	LCD_cmd(0x01);		// clear LCD
+	_delay_ms(1);
+ 
+	LCD_cmd(0x0E);		// cursor ON
+	_delay_ms(1);
+ 
+	LCD_cmd(0x80);		// ---8 go to first line and --0 is for 0th position
+	_delay_ms(1);
+	return;
+}
+ 
+void LCD_cmd(unsigned char cmd)
+{
+	LCD_DATA=cmd;
+	ctrl =(0<<rs)|(0<<rw)|(1<<en);	// RS and RW as LOW and EN as HIGH
+	_delay_ms(1);
+	ctrl =(0<<rs)|(0<<rw)|(0<<en);	// RS, RW , LOW and EN as LOW
+	_delay_ms(50);
+	return;
+}
+ 
+
+void LCD_write(unsigned char data)
+{
+	LCD_DATA= data;
+	ctrl = (1<<rs)|(0<<rw)|(1<<en);	// RW as LOW and RS, EN as HIGH
+	_delay_ms(1);
+	ctrl = (1<<rs)|(0<<rw)|(0<<en);	// EN and RW as LOW and RS HIGH
+	_delay_ms(50);			// delay to get things executed
+	return ;
+}
+
+
+ 
+void lcd_gotoxy(unsigned char x,unsigned char y)
+{
+    
+    unsigned char firstcharadr[]={0x80,0xC0,0x94,0xD4};
+    LCD_cmd(firstcharadr[y-1]+x-1);
+    _delay_ms(100);
+	
+}
