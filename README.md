@@ -17,7 +17,7 @@ Working:
 *the obstacles are detected using ir Tx/Rx pairs placed at appropriate positions.
  
 
-Applciation: 
+Application: 
 *In fire fighting [under development stage].
 
 
@@ -25,10 +25,9 @@ Launched on:1st February 2013.
 
 
 developed by
-Karthick[PercOS developer]
-Abishek
-Bala
- 
+Karthick[PercOS developer] 
+Balasubramanian
+Abishek 
  
  
 free to use/modify.impressport labs. 
