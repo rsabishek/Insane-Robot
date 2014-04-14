@@ -13,7 +13,7 @@ Functionality:
 *the Insane could sense multiple light sources on the surface and reach them without hitting any obstacles.
 
 Working: 
-*the bot uses a self designed light detector to get the nearesh light source and drive towards it.
+*the bot uses a self designed light detector to get the nearest light source and drive towards it.
 *the obstacles are detected using ir Tx/Rx pairs placed at appropriate positions.
  
 
